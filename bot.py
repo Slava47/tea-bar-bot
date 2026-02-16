@@ -86,6 +86,32 @@ def get_cocktail_image(c: dict):
     return None
 
 
+async def update_message(callback: CallbackQuery, text: str, keyboard: InlineKeyboardMarkup, photo: FSInputFile = None):
+    """
+    Универсальная функция для обновления сообщения.
+    Всегда редактирует существующее сообщение, даже при смене типа контента.
+    """
+    try:
+        if photo:
+            # Для сообщений с фото используем InputMediaPhoto
+            media = InputMediaPhoto(media=photo, caption=text, parse_mode="HTML")
+            
+            # Всегда используем edit_media, даже если текущее сообщение без фото
+            # Telegram сам сконвертирует тип сообщения
+            await callback.message.edit_media(media=media, reply_markup=keyboard)
+        else:
+            # Для текстовых сообщений
+            await callback.message.edit_text(
+                text,
+                reply_markup=keyboard,
+                parse_mode="HTML"
+            )
+    except Exception as e:
+        logger.error(f"Ошибка при обновлении сообщения: {e}")
+        # Просто логируем ошибку и показываем уведомление пользователю
+        await callback.answer("❌ Не удалось обновить сообщение", show_alert=True)
+
+
 # ─── /start ───────────────────────────────────────────────────────────────────
 
 @router.message(CommandStart())
@@ -118,22 +144,7 @@ async def menu_categories(callback: CallbackQuery, state: FSMContext):
     
     text = "<b>Меню</b>\n\nВыберите категорию:"
     
-    try:
-        # Пытаемся отредактировать существующее сообщение
-        await callback.message.edit_text(
-            text,
-            reply_markup=kb,
-            parse_mode="HTML",
-        )
-    except Exception as e:
-        # Если не получилось (например, сообщение с фото) - отправляем новое
-        logger.error(f"Не удалось отредактировать в menu_categories: {e}")
-        await callback.message.answer(
-            text,
-            reply_markup=kb,
-            parse_mode="HTML",
-        )
-    
+    await update_message(callback, text, kb)
     await callback.answer()
 
 
@@ -173,32 +184,8 @@ async def show_menu_item(callback: CallbackQuery, state: FSMContext):
 
     text = f"<b>{get_category_name(category)}</b>\n\n{cocktail_text(c)}"
     photo = get_cocktail_image(c)
-
-    try:
-        if photo:
-            # Если есть фото - редактируем медиа
-            media = InputMediaPhoto(media=photo, caption=text, parse_mode="HTML")
-            await callback.message.edit_media(media=media, reply_markup=kb)
-        else:
-            # Если нет фото - редактируем текст
-            await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
-    except Exception as e:
-        # Если не получилось отредактировать - отправляем новое сообщение
-        logger.error(f"Не удалось отредактировать в show_menu_item: {e}")
-        if photo:
-            await callback.message.answer_photo(
-                photo=photo,
-                caption=text,
-                reply_markup=kb,
-                parse_mode="HTML"
-            )
-        else:
-            await callback.message.answer(
-                text,
-                reply_markup=kb,
-                parse_mode="HTML"
-            )
-
+    
+    await update_message(callback, text, kb, photo)
     await callback.answer()
 
 
@@ -248,12 +235,7 @@ async def about(callback: CallbackQuery, state: FSMContext):
         [InlineKeyboardButton(text="« Назад", callback_data="home")],
     ])
     
-    try:
-        await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
-    except Exception as e:
-        logger.error(f"Не удалось отредактировать в about: {e}")
-        await callback.message.answer(text, reply_markup=kb, parse_mode="HTML")
-    
+    await update_message(callback, text, kb)
     await callback.answer()
 
 
@@ -264,20 +246,7 @@ async def home(callback: CallbackQuery, state: FSMContext):
     await state.clear()
     text = "Добро пожаловать в <b>Ли Бо</b> — чайный бар и коктейли!\n\nВыберите раздел:"
     
-    try:
-        await callback.message.edit_text(
-            text,
-            reply_markup=get_main_keyboard(),
-            parse_mode="HTML",
-        )
-    except Exception as e:
-        logger.error(f"Не удалось отредактировать в home: {e}")
-        await callback.message.answer(
-            text,
-            reply_markup=get_main_keyboard(),
-            parse_mode="HTML",
-        )
-    
+    await update_message(callback, text, get_main_keyboard())
     await callback.answer()
 
 
@@ -304,12 +273,7 @@ async def guest_card(callback: CallbackQuery, state: FSMContext):
         [InlineKeyboardButton(text="« Назад", callback_data="home")],
     ])
     
-    try:
-        await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
-    except Exception as e:
-        logger.error(f"Не удалось отредактировать в guest_card: {e}")
-        await callback.message.answer(text, reply_markup=kb, parse_mode="HTML")
-    
+    await update_message(callback, text, kb)
     await callback.answer()
 
 
@@ -326,12 +290,7 @@ async def quiz_start(callback: CallbackQuery, state: FSMContext):
     
     text = "<b>Подбор коктейля</b>\n\nВопрос 1/5:\nАлкогольный или безалкогольный?"
     
-    try:
-        await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
-    except Exception as e:
-        logger.error(f"Не удалось отредактировать в quiz_start: {e}")
-        await callback.message.answer(text, reply_markup=kb, parse_mode="HTML")
-    
+    await update_message(callback, text, kb)
     await callback.answer()
 
 
@@ -359,12 +318,7 @@ async def quiz_alcoholic(callback: CallbackQuery, state: FSMContext):
         ])
         text = "<b>Подбор коктейля</b>\n\nВопрос 2/5:\nХолодный или горячий?"
     
-    try:
-        await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
-    except Exception as e:
-        logger.error(f"Не удалось отредактировать в quiz_alcoholic: {e}")
-        await callback.message.answer(text, reply_markup=kb, parse_mode="HTML")
-    
+    await update_message(callback, text, kb)
     await callback.answer()
 
 
@@ -381,12 +335,7 @@ async def quiz_temperature(callback: CallbackQuery, state: FSMContext):
     
     text = "<b>Подбор коктейля</b>\n\nВопрос 3/5:\nКакой вкус предпочитаете?"
     
-    try:
-        await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
-    except Exception as e:
-        logger.error(f"Не удалось отредактировать в quiz_temperature: {e}")
-        await callback.message.answer(text, reply_markup=kb, parse_mode="HTML")
-    
+    await update_message(callback, text, kb)
     await callback.answer()
 
 
@@ -402,12 +351,7 @@ async def quiz_taste(callback: CallbackQuery, state: FSMContext):
     
     text = "<b>Подбор коктейля</b>\n\nВопрос 4/5:\nБолее чайный или менее чайный?"
     
-    try:
-        await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
-    except Exception as e:
-        logger.error(f"Не удалось отредактировать в quiz_taste: {e}")
-        await callback.message.answer(text, reply_markup=kb, parse_mode="HTML")
-    
+    await update_message(callback, text, kb)
     await callback.answer()
 
 
@@ -423,12 +367,7 @@ async def quiz_tea(callback: CallbackQuery, state: FSMContext):
     
     text = "<b>Подбор коктейля</b>\n\nВопрос 5/5:\nКрепкий или мягкий?"
     
-    try:
-        await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
-    except Exception as e:
-        logger.error(f"Не удалось отредактировать в quiz_tea: {e}")
-        await callback.message.answer(text, reply_markup=kb, parse_mode="HTML")
-    
+    await update_message(callback, text, kb)
     await callback.answer()
 
 
@@ -460,13 +399,7 @@ async def show_quiz_result(callback: CallbackQuery, state: FSMContext):
         kb = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="« Назад", callback_data="home")],
         ])
-        
-        try:
-            await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
-        except Exception as e:
-            logger.error(f"Не удалось отредактировать в show_quiz_result (пусто): {e}")
-            await callback.message.answer(text, reply_markup=kb, parse_mode="HTML")
-        
+        await update_message(callback, text, kb)
         await callback.answer()
         return
 
@@ -488,29 +421,8 @@ async def show_quiz_result(callback: CallbackQuery, state: FSMContext):
 
     text = f"<b>Рекомендация</b>\n\n{cocktail_text(c)}"
     photo = get_cocktail_image(c)
-
-    try:
-        if photo:
-            media = InputMediaPhoto(media=photo, caption=text, parse_mode="HTML")
-            await callback.message.edit_media(media=media, reply_markup=kb)
-        else:
-            await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
-    except Exception as e:
-        logger.error(f"Не удалось отредактировать в show_quiz_result: {e}")
-        if photo:
-            await callback.message.answer_photo(
-                photo=photo,
-                caption=text,
-                reply_markup=kb,
-                parse_mode="HTML"
-            )
-        else:
-            await callback.message.answer(
-                text,
-                reply_markup=kb,
-                parse_mode="HTML"
-            )
-
+    
+    await update_message(callback, text, kb, photo)
     await callback.answer()
 
 
@@ -558,12 +470,7 @@ async def rate_cocktail(callback: CallbackQuery, state: FSMContext):
     
     text = "<b>Оцените коктейль:</b>"
     
-    try:
-        await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
-    except Exception as e:
-        logger.error(f"Не удалось отредактировать в rate_cocktail: {e}")
-        await callback.message.answer(text, reply_markup=kb, parse_mode="HTML")
-    
+    await update_message(callback, text, kb)
     await callback.answer()
 
 
@@ -591,12 +498,7 @@ async def save_rating(callback: CallbackQuery, state: FSMContext):
     
     text = f"Оценка: <b>{rating}</b>\n\nХотите оставить отзыв?"
     
-    try:
-        await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
-    except Exception as e:
-        logger.error(f"Не удалось отредактировать в save_rating: {e}")
-        await callback.message.answer(text, reply_markup=kb, parse_mode="HTML")
-    
+    await update_message(callback, text, kb)
     await callback.answer()
 
 
@@ -606,12 +508,7 @@ async def write_review_prompt(callback: CallbackQuery, state: FSMContext):
     
     text = "Напишите ваш отзыв текстовым сообщением:"
     
-    try:
-        await callback.message.edit_text(text, parse_mode="HTML")
-    except Exception as e:
-        logger.error(f"Не удалось отредактировать в write_review_prompt: {e}")
-        await callback.message.answer(text, parse_mode="HTML")
-    
+    await update_message(callback, text, None)
     await callback.answer()
 
 
@@ -631,6 +528,8 @@ async def save_review(message: Message, state: FSMContext):
         [InlineKeyboardButton(text="« На главную", callback_data="home")],
     ])
     
+    # Здесь мы не можем использовать update_message, потому что это новое сообщение
+    # Но это окей, потому что мы вышли из callback-режима
     await message.answer(text, reply_markup=kb, parse_mode="HTML")
 
 
@@ -648,12 +547,7 @@ async def skip_review(callback: CallbackQuery, state: FSMContext):
         [InlineKeyboardButton(text="« На главную", callback_data="home")],
     ])
     
-    try:
-        await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
-    except Exception as e:
-        logger.error(f"Не удалось отредактировать в skip_review: {e}")
-        await callback.message.answer(text, reply_markup=kb, parse_mode="HTML")
-    
+    await update_message(callback, text, kb)
     await callback.answer()
 
 
