@@ -90,7 +90,9 @@ async def safe_edit_text(message, text, **kwargs):
     """Edit message text; if the message has no text (e.g. photo), delete and send new."""
     try:
         await message.edit_text(text, **kwargs)
-    except TelegramBadRequest:
+    except TelegramBadRequest as e:
+        if "there is no text in the message" not in str(e):
+            raise
         try:
             await message.delete()
         except Exception:
