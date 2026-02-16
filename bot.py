@@ -89,18 +89,15 @@ def get_cocktail_image(c: dict):
 async def update_message(callback: CallbackQuery, text: str, keyboard: InlineKeyboardMarkup, photo: FSInputFile = None):
     """
     Универсальная функция для обновления сообщения.
-    Всегда редактирует существующее сообщение, даже при смене типа контента.
+    Всегда редактирует существующее сообщение, правильно обрабатывая фото и текст.
     """
     try:
         if photo:
-            # Для сообщений с фото используем InputMediaPhoto
+            # Если есть фото - используем edit_media (даже если текущее сообщение без фото)
             media = InputMediaPhoto(media=photo, caption=text, parse_mode="HTML")
-            
-            # Всегда используем edit_media, даже если текущее сообщение без фото
-            # Telegram сам сконвертирует тип сообщения
             await callback.message.edit_media(media=media, reply_markup=keyboard)
         else:
-            # Для текстовых сообщений
+            # Если нет фото - используем edit_text (даже если текущее сообщение с фото)
             await callback.message.edit_text(
                 text,
                 reply_markup=keyboard,
@@ -108,8 +105,8 @@ async def update_message(callback: CallbackQuery, text: str, keyboard: InlineKey
             )
     except Exception as e:
         logger.error(f"Ошибка при обновлении сообщения: {e}")
-        # Просто логируем ошибку и показываем уведомление пользователю
-        await callback.answer("❌ Не удалось обновить сообщение", show_alert=True)
+        # В крайнем случае показываем уведомление
+        await callback.answer("⚠️ Не удалось обновить сообщение", show_alert=True)
 
 
 # ─── /start ───────────────────────────────────────────────────────────────────
@@ -529,7 +526,6 @@ async def save_review(message: Message, state: FSMContext):
     ])
     
     # Здесь мы не можем использовать update_message, потому что это новое сообщение
-    # Но это окей, потому что мы вышли из callback-режима
     await message.answer(text, reply_markup=kb, parse_mode="HTML")
 
 
