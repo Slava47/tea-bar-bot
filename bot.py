@@ -8,6 +8,7 @@ import logging
 import os
 
 from aiogram import Bot, Dispatcher, F, Router
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import CommandStart
 from aiogram.types import (
     CallbackQuery,
@@ -85,6 +86,20 @@ def get_cocktail_image(c: dict):
     return None
 
 
+async def safe_edit_text(message, text, **kwargs):
+    """Edit message text; if the message has no text (e.g. photo), delete and send new."""
+    try:
+        await message.edit_text(text, **kwargs)
+    except TelegramBadRequest as e:
+        if "there is no text in the message" not in str(e):
+            raise
+        try:
+            await message.delete()
+        except Exception:
+            pass
+        await message.answer(text, **kwargs)
+
+
 # ─── /start ───────────────────────────────────────────────────────────────────
 
 @router.message(CommandStart())
@@ -114,7 +129,8 @@ async def menu_categories(callback: CallbackQuery, state: FSMContext):
         [InlineKeyboardButton(text="Алкогольные", callback_data="cat_alcoholic")],
         [InlineKeyboardButton(text="« Назад", callback_data="home")],
     ])
-    await callback.message.edit_text(
+    await safe_edit_text(
+        callback.message,
         "<b>Меню</b>\n\nВыберите категорию:",
         reply_markup=kb,
         parse_mode="HTML",
@@ -135,8 +151,11 @@ async def menu_category(callback: CallbackQuery, state: FSMContext):
 
 async def show_menu_item(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
-    category = data["menu_category"]
-    index = data["menu_index"]
+    category = data.get("menu_category")
+    if not category:
+        await menu_categories(callback, state)
+        return
+    index = data.get("menu_index", 0)
     items = get_cocktails_by_category(category)
     c = items[index]
 
@@ -216,7 +235,7 @@ async def about(callback: CallbackQuery, state: FSMContext):
         [InlineKeyboardButton(text="Instagram", url="https://www.instagram.com/libo.tea/")],
         [InlineKeyboardButton(text="« Назад", callback_data="home")],
     ])
-    await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
+    await safe_edit_text(callback.message, text, reply_markup=kb, parse_mode="HTML")
     await callback.answer()
 
 
@@ -225,7 +244,8 @@ async def about(callback: CallbackQuery, state: FSMContext):
 @router.callback_query(F.data == "home")
 async def home(callback: CallbackQuery, state: FSMContext):
     await state.clear()
-    await callback.message.edit_text(
+    await safe_edit_text(
+        callback.message,
         "Добро пожаловать в <b>Ли Бо</b> — чайный бар и коктейли!\n\nВыберите раздел:",
         reply_markup=get_main_keyboard(),
         parse_mode="HTML",
@@ -255,7 +275,7 @@ async def guest_card(callback: CallbackQuery, state: FSMContext):
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="« Назад", callback_data="home")],
     ])
-    await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
+    await safe_edit_text(callback.message, text, reply_markup=kb, parse_mode="HTML")
     await callback.answer()
 
 
@@ -269,7 +289,8 @@ async def quiz_start(callback: CallbackQuery, state: FSMContext):
         [InlineKeyboardButton(text="Алкогольный", callback_data="qa_yes")],
         [InlineKeyboardButton(text="Безалкогольный", callback_data="qa_no")],
     ])
-    await callback.message.edit_text(
+    await safe_edit_text(
+        callback.message,
         "<b>Подбор коктейля</b>\n\nВопрос 1/5:\nАлкогольный или безалкогольный?",
         reply_markup=kb,
         parse_mode="HTML",
@@ -291,7 +312,8 @@ async def quiz_alcoholic(callback: CallbackQuery, state: FSMContext):
             [InlineKeyboardButton(text="Кисло-сладкий", callback_data="qt_sour_sweet")],
             [InlineKeyboardButton(text="Кислый", callback_data="qt_sour")],
         ])
-        await callback.message.edit_text(
+        await safe_edit_text(
+            callback.message,
             "<b>Подбор коктейля</b>\n\nВопрос 2/5:\nКакой вкус предпочитаете?",
             reply_markup=kb,
             parse_mode="HTML",
@@ -303,7 +325,8 @@ async def quiz_alcoholic(callback: CallbackQuery, state: FSMContext):
             [InlineKeyboardButton(text="Горячий", callback_data="qtemp_hot")],
             [InlineKeyboardButton(text="Без разницы", callback_data="qtemp_any")],
         ])
-        await callback.message.edit_text(
+        await safe_edit_text(
+            callback.message,
             "<b>Подбор коктейля</b>\n\nВопрос 2/5:\nХолодный или горячий?",
             reply_markup=kb,
             parse_mode="HTML",
@@ -321,7 +344,8 @@ async def quiz_temperature(callback: CallbackQuery, state: FSMContext):
         [InlineKeyboardButton(text="Кисло-сладкий", callback_data="qt_sour_sweet")],
         [InlineKeyboardButton(text="Кислый", callback_data="qt_sour")],
     ])
-    await callback.message.edit_text(
+    await safe_edit_text(
+        callback.message,
         "<b>Подбор коктейля</b>\n\nВопрос 3/5:\nКакой вкус предпочитаете?",
         reply_markup=kb,
         parse_mode="HTML",
@@ -338,7 +362,8 @@ async def quiz_taste(callback: CallbackQuery, state: FSMContext):
         [InlineKeyboardButton(text="Более чайный", callback_data="qtea_more")],
         [InlineKeyboardButton(text="Менее чайный", callback_data="qtea_less")],
     ])
-    await callback.message.edit_text(
+    await safe_edit_text(
+        callback.message,
         "<b>Подбор коктейля</b>\n\nВопрос 4/5:\nБолее чайный или менее чайный?",
         reply_markup=kb,
         parse_mode="HTML",
@@ -355,7 +380,8 @@ async def quiz_tea(callback: CallbackQuery, state: FSMContext):
         [InlineKeyboardButton(text="Крепкий", callback_data="qs_strong")],
         [InlineKeyboardButton(text="Мягкий", callback_data="qs_soft")],
     ])
-    await callback.message.edit_text(
+    await safe_edit_text(
+        callback.message,
         "<b>Подбор коктейля</b>\n\nВопрос 5/5:\nКрепкий или мягкий?",
         reply_markup=kb,
         parse_mode="HTML",
@@ -386,7 +412,8 @@ async def show_quiz_result(callback: CallbackQuery, state: FSMContext):
     index = data.get("quiz_result_index", 0)
 
     if not results:
-        await callback.message.edit_text(
+        await safe_edit_text(
+            callback.message,
             "К сожалению, не удалось подобрать коктейль. Попробуйте ещё раз!",
             reply_markup=InlineKeyboardMarkup(inline_keyboard=[
                 [InlineKeyboardButton(text="« Назад", callback_data="home")],
@@ -469,7 +496,8 @@ async def rate_cocktail(callback: CallbackQuery, state: FSMContext):
         [InlineKeyboardButton(text=opt, callback_data=f"rating_{i}")]
         for i, opt in enumerate(RATING_OPTIONS)
     ] + [[InlineKeyboardButton(text="« Назад", callback_data="back_to_results")]])
-    await callback.message.edit_text(
+    await safe_edit_text(
+        callback.message,
         "<b>Оцените коктейль:</b>",
         reply_markup=kb,
         parse_mode="HTML",
@@ -498,7 +526,8 @@ async def save_rating(callback: CallbackQuery, state: FSMContext):
         [InlineKeyboardButton(text="Написать отзыв", callback_data="write_review")],
         [InlineKeyboardButton(text="Пропустить", callback_data="skip_review")],
     ])
-    await callback.message.edit_text(
+    await safe_edit_text(
+        callback.message,
         f"Оценка: <b>{rating}</b>\n\nХотите оставить отзыв?",
         reply_markup=kb,
         parse_mode="HTML",
@@ -509,7 +538,8 @@ async def save_rating(callback: CallbackQuery, state: FSMContext):
 @router.callback_query(QuizStates.browsing_results, F.data == "write_review")
 async def write_review_prompt(callback: CallbackQuery, state: FSMContext):
     await state.set_state(QuizStates.waiting_review)
-    await callback.message.edit_text(
+    await safe_edit_text(
+        callback.message,
         "Напишите ваш отзыв текстовым сообщением:",
         parse_mode="HTML",
     )
@@ -543,7 +573,8 @@ async def skip_review(callback: CallbackQuery, state: FSMContext):
     session_id = data.get("quiz_session_id")
 
     await add_cocktail_rating(callback.from_user.id, cocktail_name, rating, None, session_id)
-    await callback.message.edit_text(
+    await safe_edit_text(
+        callback.message,
         f"Оценка сохранена для <b>{cocktail_name}</b>!",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="« На главную", callback_data="home")],
