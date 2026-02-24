@@ -1,8 +1,19 @@
-# Ли Бо — Телеграм-бот и веб-аналитика
-
-Телеграм-бот для чайного бара «Ли Бо» с веб-сайтом аналитики.
-
-## Возможности
+<div align="center">
+<br>
+<h1 align="center">Телеграм бот для подбора коктейлей с веб аналитикой</h1>
+<br>
+<p align="center">
+  <img alt="Python" src="https://img.shields.io/badge/Python-3-3776AB?logo=python&logoColor=white&style=for-the-badge">
+  <img alt="Aiogram" src="https://img.shields.io/badge/Aiogram-3.x-2F74C0?logo=telegram&logoColor=white&style=for-the-badge">
+  <img alt="Flask" src="https://img.shields.io/badge/Flask-000000?logo=flask&logoColor=white&style=for-the-badge">
+  <img alt="SQLite" src="https://img.shields.io/badge/SQLite-003B57?logo=sqlite&logoColor=white&style=for-the-badge">
+  <br>
+  <img alt="Docker" src="https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white&style=for-the-badge">
+</p>
+<br>
+<h4 align="center">Telegram-бот для чайно-коктейльного бара с подбором коктейлей и веб-панелью для аналитики</h4>
+<br>
+</div>
 
 ### Телеграм-бот
 - **Меню** — полное меню с описанием, составом и ценами. Категории: холодные безалкогольные, горячие безалкогольные, алкогольные. Навигация инлайн-кнопками. Поддержка фотографий (опционально).
@@ -21,15 +32,14 @@
 ## Быстрый старт
 
 ### Требования
-- Python 3.10+
-- Токен Telegram-бота (получить через [@BotFather](https://t.me/BotFather))
+- Python 3
+- Токен Telegram-бота
 
 ### Локальная установка
-
 ```bash
 # Клонировать репозиторий
-git clone <URL>
-cd chaykabarka
+git clone https://github.com/Slava47/tea-bar-bot.git
+cd tea-bar-bot
 
 # Создать виртуальное окружение
 python -m venv venv
@@ -58,26 +68,6 @@ docker run -d \
   -p 5000:5000 \
   --name libo \
   libo-bot
-```
-
-## Структура проекта
-
-```
-chaykabarka/
-├── bot.py              # Телеграм-бот (Aiogram 3)
-├── web.py              # Flask веб-сервер аналитики
-├── run.py              # Запуск бота и веб-сервера вместе
-├── database.py         # Модуль работы с SQLite
-├── cocktails.py        # Данные о коктейлях и логика подбора
-├── requirements.txt    # Python-зависимости
-├── Dockerfile          # Docker-контейнер
-├── pictures/           # Фотографии коктейлей (опционально)
-├── templates/          # HTML-шаблоны для веб-сайта
-│   ├── login.html
-│   ├── dashboard.html
-│   └── user_detail.html
-└── static/
-    └── style.css       # Стили веб-сайта
 ```
 
 ## Фотографии коктейлей
